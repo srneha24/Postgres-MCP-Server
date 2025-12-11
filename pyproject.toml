@@ -1,5 +1,5 @@
 [project]
-name = "Postgres MCP Server"
+name = "postgres-mcp-server"
 version = "0.1.0"
 description = "An MCP server to connect and read data from Posgres databases"
 readme = "README.md"
