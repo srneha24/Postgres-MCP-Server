@@ -91,6 +91,7 @@ python main.py
 Add this server to your Claude Desktop configuration file:
 
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 #### If using uv:
@@ -158,17 +159,3 @@ get_schema()
 query_data("SELECT * FROM users LIMIT 10")
 query_data("SELECT COUNT(*) FROM orders WHERE status = 'completed'")
 ```
-
-## Dependencies
-
-- `mcp>=1.23.3`: Model Context Protocol SDK
-- `psycopg2-binary>=2.9.11`: PostgreSQL database adapter
-
-## Development
-
-The server is built using the FastMCP framework, which simplifies MCP server development. The main components are:
-
-- [main.py:23-26](main.py#L23-L26): Database connection management
-- [main.py:49-82](main.py#L49-L82): Query execution tool
-- [main.py:85-196](main.py#L85-L196): Schema inspection tool
-- [main.py:29-46](main.py#L29-L46): JSON serialization utilities
