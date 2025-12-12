@@ -141,21 +141,24 @@ Add this server to your Claude Desktop configuration file:
 
 **Note**: Replace `/ABSOLUTE/PATH/TO/postgres-mcp-server` with the actual absolute path to your installation directory. On Windows, use backslashes (e.g., `C:\\Users\\YourName\\postgres-mcp-server`) or forward slashes.
 
+### Using with Claude Code
+
+#### If using uv
+
+```bash
+claude mcp add --transport stdio postgres --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- uv --directory /ABSOLUTE/PATH/TO/postgres-mcp-server run main.py
+```
+
+#### If using Python directly
+
+```bash
+claude mcp add --transport stdio postgres --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- python /ABSOLUTE/PATH/TO/postgres-mcp-server/main.py
+```
+
+**Note**: Replace `/ABSOLUTE/PATH/TO/postgres-mcp-server` with the actual absolute path to your installation directory. On Windows, use backslashes (e.g., `C:\\Users\\YourName\\postgres-mcp-server`) or forward slashes.
+
 ## Security Features
 
 - **Read-only Operations**: The server automatically blocks any queries containing INSERT, UPDATE, DELETE, CREATE, DROP, or ALTER keywords
 - **Error Handling**: Comprehensive error handling with detailed error messages
 - **Connection Management**: Proper database connection lifecycle management
-
-## Example Queries
-
-Once connected, you can use the tools through an MCP client:
-
-```python
-# Get database schema
-get_schema()
-
-# Query data
-query_data("SELECT * FROM users LIMIT 10")
-query_data("SELECT COUNT(*) FROM orders WHERE status = 'completed'")
-```
