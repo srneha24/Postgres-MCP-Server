@@ -12,14 +12,17 @@ A Model Context Protocol (MCP) server that provides secure read-only access to P
 ## Tools
 
 ### `query_data`
+
 Execute SQL SELECT queries on the PostgreSQL database.
 
 **Parameters:**
+
 - `sql_query` (string): The SQL query to execute (only SELECT queries are allowed)
 
 **Returns:** JSON string with query results
 
 ### `get_schema`
+
 Retrieve the complete database schema for all tables in the public schema.
 
 **Returns:** JSON string containing tables with their columns, data types, nullability, defaults, and indexes
@@ -34,12 +37,13 @@ Retrieve the complete database schema for all tables in the public schema.
 ### Setup
 
 1. Clone this repository:
+
 ```bash
 git clone <repository-url>
 cd Postgres-MCP-Server
 ```
 
-2. Choose your preferred installation method:
+1. Choose your preferred installation method:
 
 #### Option A: Using uv (Recommended)
 
@@ -94,7 +98,7 @@ Add this server to your Claude Desktop configuration file:
 
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-#### If using uv:
+#### If using uv
 
 ```json
 {
@@ -119,7 +123,7 @@ Add this server to your Claude Desktop configuration file:
 }
 ```
 
-#### If using Python directly:
+#### If using Python directly
 
 ```json
 {
@@ -146,13 +150,13 @@ Add this server to your Claude Desktop configuration file:
 #### If using uv
 
 ```bash
-claude mcp add --transport stdio postgres --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- uv --directory /ABSOLUTE/PATH/TO/postgres-mcp-server run main.py
+claude mcp add postgres --transport stdio --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- uv --directory /ABSOLUTE/PATH/TO/postgres-mcp-server run main.py
 ```
 
 #### If using Python directly
 
 ```bash
-claude mcp add --transport stdio postgres --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- python /ABSOLUTE/PATH/TO/postgres-mcp-server/main.py
+claude mcp add postgres --transport stdio --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- python /ABSOLUTE/PATH/TO/postgres-mcp-server/main.py
 ```
 
 **Note**: Replace `/ABSOLUTE/PATH/TO/postgres-mcp-server` with the actual absolute path to your installation directory. On Windows, use backslashes (e.g., `C:\\Users\\YourName\\postgres-mcp-server`) or forward slashes.
