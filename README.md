@@ -11,21 +11,71 @@ A Model Context Protocol (MCP) server that provides secure read-only access to P
 
 ## Tools
 
-### `query_data`
+The server exposes the following MCP tools (defined in `main.py`):
 
-Execute SQL SELECT queries on the PostgreSQL database.
+### `query_database`
 
-**Parameters:**
+Execute a SQL SELECT query on the PostgreSQL database.
 
-- `sql_query` (string): The SQL query to execute (only SELECT queries are allowed)
+Parameters:
 
-**Returns:** JSON string with query results
+- `sql_query` (string): The SQL query to execute (only SELECT queries are allowed).
 
-### `get_schema`
+Returns: JSON string with query results or an error object.
 
-Retrieve the complete database schema for all tables in the public schema.
+### `get_database_schema`
 
-**Returns:** JSON string containing tables with their columns, data types, nullability, defaults, and indexes
+Retrieve columns for all tables in the `public` schema.
+
+Parameters: None
+
+Returns: JSON string of rows with fields `(table_name, column_name, data_type, is_nullable, column_default)`.
+
+### `get_database_schema_with_indexes`
+
+Retrieve schema and indexes for all tables in the `public` schema.
+
+Parameters: None
+
+Returns: JSON string mapping each table to its `columns` and `indexes` (index entries include `index_name`, `columns`, `is_unique`, `is_primary`).
+
+### `get_table_schema`
+
+Retrieve column information for a specific table.
+
+Parameters:
+
+- `table_name` (string): The table name.
+
+Returns: JSON string of rows with fields `(column_order, column_name, data_type, is_nullable, default_value, column_comment)` or an error if the table does not exist.
+
+### `get_table_schema_with_indexes`
+
+Retrieve columns and indexes for a specific table.
+
+Parameters:
+
+- `table_name` (string): The table name.
+
+Returns: JSON string with keys `columns` and `indexes` for the given table, or an error if the table does not exist.
+
+### `get_table_indexes`
+
+Retrieve index information for a specific table.
+
+Parameters:
+
+- `table_name` (string): The table name.
+
+Returns: JSON string of index rows `(index_name, column_name, is_unique, is_primary)` or a message if no indexes are found.
+
+### `list_tables`
+
+List all tables in the `public` schema.
+
+Parameters: None
+
+Returns: JSON string array of table names.
 
 ## Installation
 

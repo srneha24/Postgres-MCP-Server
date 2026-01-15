@@ -47,7 +47,7 @@ def simplify_json(obj):
 
 
 @mcp.tool()
-def query_data(sql_query: str) -> str:
+def query_database(sql_query: str) -> str:
     """
     Execute a SQL query on a Postgres database and return the results.
 
@@ -83,7 +83,50 @@ def query_data(sql_query: str) -> str:
 
 
 @mcp.tool()
-def get_schema() -> str:
+def get_database_schema() -> str:
+    """
+    Get the database schema including all tables, their columns, and indexes.
+
+    Returns:
+        str: A JSON string containing tables with their columns, data types, and indexes.
+    """
+    logging.info("Fetching database schema...")
+
+    schema_query = """
+    SELECT
+        table_name,
+        column_name,
+        data_type,
+        is_nullable,
+        column_default
+    FROM
+        information_schema.columns
+    WHERE
+        table_schema = 'public'
+    ORDER BY
+        table_name, ordinal_position;
+    """
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        cursor = conn.cursor()
+
+        # Fetch columns
+        cursor.execute(schema_query)
+        column_rows = cursor.fetchall()
+
+        return json.dumps(column_rows, indent=2)
+    except Exception as e:
+        logging.error(f"Error fetching schema: {e}")
+        return json.dumps({"error": str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@mcp.tool()
+def get_database_schema_with_indexes() -> str:
     """
     Get the database schema including all tables, their columns, and indexes.
 
@@ -190,6 +233,254 @@ def get_schema() -> str:
 
     except Exception as e:
         logging.error(f"Error fetching schema: {e}")
+        return json.dumps({"error": str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@mcp.tool()
+def get_table_schema(table_name: str) -> str:
+    """
+    Get the schema of a specific table including its columns.
+
+    Args:
+        table_name (str): The name of the table.
+    Returns:
+        str: A JSON string containing the table's columns, data types.
+    """
+    logging.info(f"Fetching schema for table: {table_name}")
+
+    schema_query = """
+    SELECT
+        a.attnum AS column_order,
+        a.attname AS column_name,
+        pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+        NOT a.attnotnull AS is_nullable,
+        pg_get_expr(ad.adbin, ad.adrelid) AS default_value,
+        col_description(a.attrelid, a.attnum) AS column_comment
+    FROM pg_attribute a
+    JOIN pg_class t ON a.attrelid = t.oid
+    JOIN pg_namespace n ON t.relnamespace = n.oid
+    LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
+    WHERE n.nspname = 'public'
+    AND t.relname = %s
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+    ORDER BY a.attnum;
+    """
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        cursor = conn.cursor()
+
+        # Fetch columns
+        cursor.execute(schema_query, (table_name,))
+        column_rows = cursor.fetchall()
+
+        if not column_rows:
+            logging.warning(f"Table {table_name} does not exist.")
+            return json.dumps({"error": f"Table {table_name} does not exist."})
+
+        logging.info(f"Found schema for table: {table_name}")
+        return json.dumps(column_rows, indent=2)
+
+    except Exception as e:
+        logging.error(f"Error fetching schema for table {table_name}: {e}")
+        return json.dumps({"error": str(e)}, indent=2)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@mcp.tool()
+def get_table_schema_with_indexes(table_name: str) -> str:
+    """
+    Get the schema of a specific table including its columns and indexes.
+
+    Args:
+        table_name (str): The name of the table.
+    Returns:
+        str: A JSON string containing the table's columns, data types.
+    """
+    logging.info(f"Fetching schema for table: {table_name}")
+
+    schema_query = """
+    SELECT
+        a.attnum AS column_order,
+        a.attname AS column_name,
+        pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+        NOT a.attnotnull AS is_nullable,
+        pg_get_expr(ad.adbin, ad.adrelid) AS default_value,
+        col_description(a.attrelid, a.attnum) AS column_comment
+    FROM pg_attribute a
+    JOIN pg_class t ON a.attrelid = t.oid
+    JOIN pg_namespace n ON t.relnamespace = n.oid
+    LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
+    WHERE n.nspname = 'public'
+    AND t.relname = %s
+    AND a.attnum > 0
+    AND NOT a.attisdropped
+    ORDER BY a.attnum;
+    """
+
+    index_query = """
+    SELECT
+        i.relname AS index_name,
+        a.attname AS column_name,
+        ix.indisunique AS is_unique,
+        ix.indisprimary AS is_primary
+    FROM pg_class t
+    JOIN pg_index ix ON t.oid = ix.indrelid
+    JOIN pg_class i ON i.oid = ix.indexrelid
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+    AND t.relname = %s
+    ORDER BY i.relname, a.attnum;
+    """
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        cursor = conn.cursor()
+
+        table_schema = {"columns": [], "indexes": []}
+
+        # Fetch columns
+        cursor.execute(schema_query, (table_name,))
+        column_rows = cursor.fetchall()
+
+        if not column_rows:
+            logging.warning(f"Table {table_name} does not exist.")
+            return json.dumps({"error": f"Table {table_name} does not exist."})
+
+        table_schema["columns"] = column_rows
+
+        # Fetch indexes
+        cursor.execute(index_query, (table_name,))
+        index_rows = cursor.fetchall()
+        for row in index_rows:
+            index_name, column_name, is_unique, is_primary = row
+
+            # Check if this is a new index or continuation of previous
+            existing_index = next(
+                (
+                    idx
+                    for idx in table_schema["indexes"]
+                    if idx["index_name"] == index_name
+                ),
+                None,
+            )
+
+            if existing_index:
+                existing_index["columns"].append(column_name)
+            else:
+                table_schema["indexes"].append(
+                    {
+                        "index_name": index_name,
+                        "columns": [column_name],
+                        "is_unique": is_unique,
+                        "is_primary": is_primary,
+                    }
+                )
+
+        logging.info(f"Found schema for table: {table_name}")
+        return json.dumps(table_schema, indent=2)
+
+    except Exception as e:
+        logging.error(f"Error fetching schema for table {table_name}: {e}")
+        return json.dumps({"error": str(e)}, indent=2)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@mcp.tool()
+def get_table_indexes(table_name: str) -> str:
+    """
+    Get the indexes of a specific table.
+
+    Args:
+        table_name (str): The name of the table.
+    Returns:
+        str: A JSON string containing the table's indexes.
+    """
+    logging.info(f"Fetching indexes for table: {table_name}")
+
+    indexes_query = """
+    SELECT
+        i.relname AS index_name,
+        a.attname AS column_name,
+        ix.indisunique AS is_unique,
+        ix.indisprimary AS is_primary
+    FROM pg_class t
+    JOIN pg_index ix ON t.oid = ix.indrelid
+    JOIN pg_class i ON i.oid = ix.indexrelid
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+    AND t.relname = %s
+    ORDER BY i.relname, a.attnum;
+    """
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        cursor = conn.cursor()
+
+        # Fetch indexes
+        cursor.execute(indexes_query, (table_name,))
+        index_rows = cursor.fetchall()
+
+        if not index_rows:
+            logging.warning(f"No indexes found for table {table_name}.")
+            return json.dumps({"message": f"No indexes found for table {table_name}."})
+
+        logging.info(f"Found {len(index_rows)} indexes for table: {table_name}")
+        return json.dumps(index_rows, indent=2)
+
+    except Exception as e:
+        logging.error(f"Error fetching indexes for table {table_name}: {e}")
+        return json.dumps({"error": str(e)}, indent=2)
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@mcp.tool()
+def list_tables() -> str:
+    """
+    List all tables in the public schema of the database.
+
+    Returns:
+        str: A JSON string containing the list of table names.
+    """
+    logging.info("Listing all tables in the public schema...")
+
+    tables_query = """
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+    AND table_type = 'BASE TABLE';
+    """
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        cursor = conn.cursor()
+
+        # Fetch table names
+        cursor.execute(tables_query)
+        table_rows = cursor.fetchall()
+        table_names = [row[0] for row in table_rows]
+
+        logging.info(f"Found {len(table_names)} tables.")
+        return json.dumps(table_names, indent=2)
+
+    except Exception as e:
+        logging.error(f"Error listing tables: {e}")
         return json.dumps({"error": str(e)})
     finally:
         cursor.close()
