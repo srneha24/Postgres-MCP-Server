@@ -25,17 +25,21 @@ Returns: JSON string with query results or an error object.
 
 ### `get_database_schema`
 
-Retrieve columns for all tables in the `public` schema.
+Retrieve columns for all tables in a schema (defaults to `public`).
 
-Parameters: None
+Parameters:
+
+- `schema` (string, optional): Schema name to inspect. Default: `public`.
 
 Returns: JSON string of rows with fields `(table_name, column_name, data_type, is_nullable, column_default)`.
 
 ### `get_database_schema_with_indexes`
 
-Retrieve schema and indexes for all tables in the `public` schema.
+Retrieve schema and indexes for all tables in a schema (defaults to `public`).
 
-Parameters: None
+Parameters:
+
+- `schema` (string, optional): Schema name to inspect. Default: `public`.
 
 Returns: JSON string mapping each table to its `columns` and `indexes` (index entries include `index_name`, `columns`, `is_unique`, `is_primary`).
 
@@ -46,6 +50,7 @@ Retrieve column information for a specific table.
 Parameters:
 
 - `table_name` (string): The table name.
+- `schema` (string, optional): Schema name to inspect. Default: `public`.
 
 Returns: JSON string of rows with fields `(column_order, column_name, data_type, is_nullable, default_value, column_comment)` or an error if the table does not exist.
 
@@ -56,6 +61,7 @@ Retrieve columns and indexes for a specific table.
 Parameters:
 
 - `table_name` (string): The table name.
+- `schema` (string, optional): Schema name to inspect. Default: `public`.
 
 Returns: JSON string with keys `columns` and `indexes` for the given table, or an error if the table does not exist.
 
@@ -66,16 +72,35 @@ Retrieve index information for a specific table.
 Parameters:
 
 - `table_name` (string): The table name.
+- `schema` (string, optional): Schema name to inspect. Default: `public`.
 
 Returns: JSON string of index rows `(index_name, column_name, is_unique, is_primary)` or a message if no indexes are found.
 
 ### `list_tables`
 
-List all tables in the `public` schema.
+List all tables in the specified schema (defaults to `public`).
+
+Parameters:
+
+- `schema` (string, optional): Schema name to list tables from. Default: `public`.
+
+Returns: JSON string array of table names.
+
+### `ping_database`
+
+Health-check tool to verify connectivity to the Postgres database.
 
 Parameters: None
 
-Returns: JSON string array of table names.
+Returns: JSON object with `status` ("success" or "error") and a `message` describing the result.
+
+### `list_database_schemas`
+
+List all non-system schemas in the connected Postgres database.
+
+Parameters: None
+
+Returns: JSON string array of schema names (system schemas like `pg_catalog` and `information_schema` are excluded).
 
 ## Installation
 

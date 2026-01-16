@@ -6,6 +6,7 @@ from mcp.server.fastmcp import FastMCP
 from decimal import Decimal
 from datetime import datetime, date, time
 from uuid import UUID
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 
@@ -83,16 +84,19 @@ def query_database(sql_query: str) -> str:
 
 
 @mcp.tool()
-def get_database_schema() -> str:
+def get_database_schema(schema: Optional[str] = "public") -> str:
     """
     Get the database schema including all tables, their columns, and indexes.
+
+    Args:
+        schema (str): Optional. The database schema to query. Defaults to "public".
 
     Returns:
         str: A JSON string containing tables with their columns, data types, and indexes.
     """
     logging.info("Fetching database schema...")
 
-    schema_query = """
+    schema_query = f"""
     SELECT
         table_name,
         column_name,
@@ -102,7 +106,7 @@ def get_database_schema() -> str:
     FROM
         information_schema.columns
     WHERE
-        table_schema = 'public'
+        table_schema = '{schema}'
     ORDER BY
         table_name, ordinal_position;
     """
@@ -126,16 +130,19 @@ def get_database_schema() -> str:
 
 
 @mcp.tool()
-def get_database_schema_with_indexes() -> str:
+def get_database_schema_with_indexes(schema: Optional[str] = "public") -> str:
     """
     Get the database schema including all tables, their columns, and indexes.
+
+    Args:
+        schema (str): Optional. The database schema to query. Defaults to "public".
 
     Returns:
         str: A JSON string containing tables with their columns, data types, and indexes.
     """
     logging.info("Fetching database schema...")
 
-    schema_query = """
+    schema_query = f"""
     SELECT
         table_name,
         column_name,
@@ -145,12 +152,12 @@ def get_database_schema_with_indexes() -> str:
     FROM
         information_schema.columns
     WHERE
-        table_schema = 'public'
+        table_schema = '{schema}'
     ORDER BY
         table_name, ordinal_position;
     """
 
-    indexes_query = """
+    indexes_query = f"""
     SELECT
         t.relname AS table_name,
         i.relname AS index_name,
@@ -164,7 +171,7 @@ def get_database_schema_with_indexes() -> str:
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
         JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE
-        n.nspname = 'public'
+        n.nspname = '{schema}'
     ORDER BY
         t.relname, i.relname, a.attnum;
     """
@@ -240,18 +247,19 @@ def get_database_schema_with_indexes() -> str:
 
 
 @mcp.tool()
-def get_table_schema(table_name: str) -> str:
+def get_table_schema(table_name: str, schema: Optional[str] = "public") -> str:
     """
     Get the schema of a specific table including its columns.
 
     Args:
         table_name (str): The name of the table.
+        schema (str): Optional. The database schema to query. Defaults to "public".
     Returns:
         str: A JSON string containing the table's columns, data types.
     """
     logging.info(f"Fetching schema for table: {table_name}")
 
-    schema_query = """
+    schema_query = f"""
     SELECT
         a.attnum AS column_order,
         a.attname AS column_name,
@@ -263,7 +271,7 @@ def get_table_schema(table_name: str) -> str:
     JOIN pg_class t ON a.attrelid = t.oid
     JOIN pg_namespace n ON t.relnamespace = n.oid
     LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
-    WHERE n.nspname = 'public'
+    WHERE n.nspname = '{schema}'
     AND t.relname = %s
     AND a.attnum > 0
     AND NOT a.attisdropped
@@ -295,18 +303,21 @@ def get_table_schema(table_name: str) -> str:
 
 
 @mcp.tool()
-def get_table_schema_with_indexes(table_name: str) -> str:
+def get_table_schema_with_indexes(
+    table_name: str, schema: Optional[str] = "public"
+) -> str:
     """
     Get the schema of a specific table including its columns and indexes.
 
     Args:
         table_name (str): The name of the table.
+        schema (str): Optional. The database schema to query. Defaults to "public".
     Returns:
         str: A JSON string containing the table's columns, data types.
     """
     logging.info(f"Fetching schema for table: {table_name}")
 
-    schema_query = """
+    schema_query = f"""
     SELECT
         a.attnum AS column_order,
         a.attname AS column_name,
@@ -318,14 +329,14 @@ def get_table_schema_with_indexes(table_name: str) -> str:
     JOIN pg_class t ON a.attrelid = t.oid
     JOIN pg_namespace n ON t.relnamespace = n.oid
     LEFT JOIN pg_attrdef ad ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
-    WHERE n.nspname = 'public'
+    WHERE n.nspname = '{schema}'
     AND t.relname = %s
     AND a.attnum > 0
     AND NOT a.attisdropped
     ORDER BY a.attnum;
     """
 
-    index_query = """
+    index_query = f"""
     SELECT
         i.relname AS index_name,
         a.attname AS column_name,
@@ -336,7 +347,7 @@ def get_table_schema_with_indexes(table_name: str) -> str:
     JOIN pg_class i ON i.oid = ix.indexrelid
     JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
     JOIN pg_namespace n ON n.oid = t.relnamespace
-    WHERE n.nspname = 'public'
+    WHERE n.nspname = '{schema}'
     AND t.relname = %s
     ORDER BY i.relname, a.attnum;
     """
@@ -398,18 +409,19 @@ def get_table_schema_with_indexes(table_name: str) -> str:
 
 
 @mcp.tool()
-def get_table_indexes(table_name: str) -> str:
+def get_table_indexes(table_name: str, schema: Optional[str] = "public") -> str:
     """
     Get the indexes of a specific table.
 
     Args:
         table_name (str): The name of the table.
+        schema (str): Optional. The database schema to query. Defaults to "public".
     Returns:
         str: A JSON string containing the table's indexes.
     """
     logging.info(f"Fetching indexes for table: {table_name}")
 
-    indexes_query = """
+    indexes_query = f"""
     SELECT
         i.relname AS index_name,
         a.attname AS column_name,
@@ -420,7 +432,7 @@ def get_table_indexes(table_name: str) -> str:
     JOIN pg_class i ON i.oid = ix.indexrelid
     JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
     JOIN pg_namespace n ON n.oid = t.relnamespace
-    WHERE n.nspname = 'public'
+    WHERE n.nspname = '{schema}'
     AND t.relname = %s
     ORDER BY i.relname, a.attnum;
     """
@@ -450,19 +462,22 @@ def get_table_indexes(table_name: str) -> str:
 
 
 @mcp.tool()
-def list_tables() -> str:
+def list_tables(schema: Optional[str] = "public") -> str:
     """
-    List all tables in the public schema of the database.
+    List all tables in the specified schema of the database.
+
+    Args:
+        schema (str): Optional. The database schema to query. Defaults to "public".
 
     Returns:
         str: A JSON string containing the list of table names.
     """
-    logging.info("Listing all tables in the public schema...")
+    logging.info(f"Listing all tables in the {schema} schema...")
 
-    tables_query = """
+    tables_query = f"""
     SELECT table_name
     FROM information_schema.tables
-    WHERE table_schema = 'public'
+    WHERE table_schema = '{schema}'
     AND table_type = 'BASE TABLE';
     """
 
@@ -481,6 +496,65 @@ def list_tables() -> str:
 
     except Exception as e:
         logging.error(f"Error listing tables: {e}")
+        return json.dumps({"error": str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@mcp.tool
+def ping_database() -> str:
+    """
+    Ping the Postgres database to check connectivity.
+
+    Returns:
+        str: A message indicating the status of the connection.
+    """
+    logging.info("Pinging the database...")
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        conn.close()
+        return json.dumps(
+            {"status": "success", "message": "Database connection successful."}
+        )
+    except Exception as e:
+        logging.error(f"Database connection failed: {e}")
+        return json.dumps({"status": "error", "message": str(e)})
+
+
+def list_database_schemas() -> str:
+    """
+    List all schemas in the Postgres database.
+
+    Returns:
+        str: A JSON string containing the list of schema names.
+    """
+    logging.info("Listing all database schemas...")
+
+    schemas_query = """
+    SELECT schema_name
+    FROM information_schema.schemata
+    WHERE schema_name NOT IN ('pg_catalog', 'information_schema')
+    ORDER BY schema_name;
+    """
+
+    try:
+        conn = get_db_connection()
+        logging.info("Database connection established.")
+        cursor = conn.cursor()
+
+        # Fetch schema names
+        cursor.execute(schemas_query)
+        schema_rows = cursor.fetchall()
+        schema_names = [row[0] for row in schema_rows]
+
+        logging.info(f"Found {len(schema_names)} schemas.")
+        return json.dumps(schema_names, indent=2)
+
+    except Exception as e:
+        logging.error(f"Error listing schemas: {e}")
         return json.dumps({"error": str(e)})
     finally:
         cursor.close()
