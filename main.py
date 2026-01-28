@@ -502,7 +502,7 @@ def list_tables(schema: Optional[str] = "public") -> str:
         conn.close()
 
 
-@mcp.tool
+@mcp.tool()
 def ping_database() -> str:
     """
     Ping the Postgres database to check connectivity.
@@ -524,6 +524,7 @@ def ping_database() -> str:
         return json.dumps({"status": "error", "message": str(e)})
 
 
+@mcp.tool()
 def list_database_schemas() -> str:
     """
     List all schemas in the Postgres database.
