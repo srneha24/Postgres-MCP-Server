@@ -2,6 +2,7 @@ import os
 import json
 import psycopg2
 import logging
+from psycopg2 import OperationalError, ProgrammingError, DatabaseError, InterfaceError
 from mcp.server.fastmcp import FastMCP
 from decimal import Decimal
 from datetime import datetime, date, time
@@ -58,27 +59,52 @@ def query_database(sql_query: str) -> str:
         str: The results of the query as a JSON string.
     """
 
-    if any(
-        keyword in sql_query.upper()
-        for keyword in ["INSERT ", "UPDATE ", "DELETE ", "CREATE ", "DROP ", "ALTER "]
-    ):
-        logging.warning("Only SELECT queries are allowed.")
-        return json.dumps({"error": "Only SELECT queries are allowed."})
+    BLOCKED_KEYWORDS = (
+        "INSERT ",
+        "UPDATE ",
+        "DELETE ",
+        "CREATE ",
+        "DROP ",
+        "ALTER ",
+        "TRUNCATE ",
+        "GRANT ",
+        "REVOKE ",
+        "COPY ",
+        "MERGE ",
+    )
+    upper_query = sql_query.upper()
+    if any(keyword in upper_query for keyword in BLOCKED_KEYWORDS):
+        logging.warning("Write/DDL queries are not allowed.")
+        return json.dumps(
+            {
+                "error": "Write and DDL queries are not allowed. Only read queries are permitted."
+            }
+        )
 
     logging.info(f"Executing query: {sql_query}")
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
         cursor.execute(sql_query)
         rows = cursor.fetchall()
-    except Exception as e:
-        logging.error(f"Error executing query: {e}")
-        return json.dumps({"error": str(e)})
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"})
+    except ProgrammingError as e:
+        logging.error(f"SQL query error: {e}")
+        return json.dumps({"error": f"SQL query error: {e}"})
+    except DatabaseError as e:
+        logging.error(f"Database error: {e}")
+        return json.dumps({"error": f"Database error: {e}"})
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
     return json.dumps(simplify_json(rows), indent=2)
 
@@ -111,22 +137,31 @@ def get_database_schema(schema: Optional[str] = "public") -> str:
         table_name, ordinal_position;
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
 
-        # Fetch columns
         cursor.execute(schema_query)
         column_rows = cursor.fetchall()
 
         return json.dumps(column_rows, indent=2)
-    except Exception as e:
-        logging.error(f"Error fetching schema: {e}")
-        return json.dumps({"error": str(e)})
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"})
+    except ProgrammingError as e:
+        logging.error(f"SQL error fetching schema: {e}")
+        return json.dumps({"error": f"SQL error fetching schema: {e}"})
+    except DatabaseError as e:
+        logging.error(f"Database error fetching schema: {e}")
+        return json.dumps({"error": f"Database error fetching schema: {e}"})
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 @mcp.tool()
@@ -176,16 +211,16 @@ def get_database_schema_with_indexes(schema: Optional[str] = "public") -> str:
         t.relname, i.relname, a.attnum;
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
 
-        # Fetch columns
         cursor.execute(schema_query)
         column_rows = cursor.fetchall()
 
-        # Organize columns by table
         schema = {}
         for row in column_rows:
             table_name, column_name, data_type, is_nullable, column_default = row
@@ -202,11 +237,9 @@ def get_database_schema_with_indexes(schema: Optional[str] = "public") -> str:
                 }
             )
 
-        # Fetch indexes
         cursor.execute(indexes_query)
         index_rows = cursor.fetchall()
 
-        # Organize indexes by table
         for row in index_rows:
             table_name, index_name, column_name, is_unique, is_primary = row
 
@@ -235,15 +268,22 @@ def get_database_schema_with_indexes(schema: Optional[str] = "public") -> str:
                     }
                 )
 
-        logging.info(f"Found {len(schema)} tables in schema.")
         return json.dumps(schema, indent=2)
 
-    except Exception as e:
-        logging.error(f"Error fetching schema: {e}")
-        return json.dumps({"error": str(e)})
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"})
+    except ProgrammingError as e:
+        logging.error(f"SQL error fetching schema: {e}")
+        return json.dumps({"error": f"SQL error fetching schema: {e}"})
+    except DatabaseError as e:
+        logging.error(f"Database error fetching schema: {e}")
+        return json.dumps({"error": f"Database error fetching schema: {e}"})
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 @mcp.tool()
@@ -278,12 +318,13 @@ def get_table_schema(table_name: str, schema: Optional[str] = "public") -> str:
     ORDER BY a.attnum;
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
 
-        # Fetch columns
         cursor.execute(schema_query, (table_name,))
         column_rows = cursor.fetchall()
 
@@ -294,12 +335,26 @@ def get_table_schema(table_name: str, schema: Optional[str] = "public") -> str:
         logging.info(f"Found schema for table: {table_name}")
         return json.dumps(column_rows, indent=2)
 
-    except Exception as e:
-        logging.error(f"Error fetching schema for table {table_name}: {e}")
-        return json.dumps({"error": str(e)}, indent=2)
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"}, indent=2)
+    except ProgrammingError as e:
+        logging.error(f"SQL error fetching schema for table {table_name}: {e}")
+        return json.dumps(
+            {"error": f"SQL error fetching schema for table {table_name}: {e}"},
+            indent=2,
+        )
+    except DatabaseError as e:
+        logging.error(f"Database error fetching schema for table {table_name}: {e}")
+        return json.dumps(
+            {"error": f"Database error fetching schema for table {table_name}: {e}"},
+            indent=2,
+        )
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 @mcp.tool()
@@ -352,6 +407,8 @@ def get_table_schema_with_indexes(
     ORDER BY i.relname, a.attnum;
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
@@ -359,7 +416,6 @@ def get_table_schema_with_indexes(
 
         table_schema = {"columns": [], "indexes": []}
 
-        # Fetch columns
         cursor.execute(schema_query, (table_name,))
         column_rows = cursor.fetchall()
 
@@ -369,7 +425,6 @@ def get_table_schema_with_indexes(
 
         table_schema["columns"] = column_rows
 
-        # Fetch indexes
         cursor.execute(index_query, (table_name,))
         index_rows = cursor.fetchall()
         for row in index_rows:
@@ -397,15 +452,28 @@ def get_table_schema_with_indexes(
                     }
                 )
 
-        logging.info(f"Found schema for table: {table_name}")
         return json.dumps(table_schema, indent=2)
 
-    except Exception as e:
-        logging.error(f"Error fetching schema for table {table_name}: {e}")
-        return json.dumps({"error": str(e)}, indent=2)
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"}, indent=2)
+    except ProgrammingError as e:
+        logging.error(f"SQL error fetching schema for table {table_name}: {e}")
+        return json.dumps(
+            {"error": f"SQL error fetching schema for table {table_name}: {e}"},
+            indent=2,
+        )
+    except DatabaseError as e:
+        logging.error(f"Database error fetching schema for table {table_name}: {e}")
+        return json.dumps(
+            {"error": f"Database error fetching schema for table {table_name}: {e}"},
+            indent=2,
+        )
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 @mcp.tool()
@@ -437,12 +505,13 @@ def get_table_indexes(table_name: str, schema: Optional[str] = "public") -> str:
     ORDER BY i.relname, a.attnum;
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
 
-        # Fetch indexes
         cursor.execute(indexes_query, (table_name,))
         index_rows = cursor.fetchall()
 
@@ -450,15 +519,28 @@ def get_table_indexes(table_name: str, schema: Optional[str] = "public") -> str:
             logging.warning(f"No indexes found for table {table_name}.")
             return json.dumps({"message": f"No indexes found for table {table_name}."})
 
-        logging.info(f"Found {len(index_rows)} indexes for table: {table_name}")
         return json.dumps(index_rows, indent=2)
 
-    except Exception as e:
-        logging.error(f"Error fetching indexes for table {table_name}: {e}")
-        return json.dumps({"error": str(e)}, indent=2)
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"}, indent=2)
+    except ProgrammingError as e:
+        logging.error(f"SQL error fetching indexes for table {table_name}: {e}")
+        return json.dumps(
+            {"error": f"SQL error fetching indexes for table {table_name}: {e}"},
+            indent=2,
+        )
+    except DatabaseError as e:
+        logging.error(f"Database error fetching indexes for table {table_name}: {e}")
+        return json.dumps(
+            {"error": f"Database error fetching indexes for table {table_name}: {e}"},
+            indent=2,
+        )
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 @mcp.tool()
@@ -481,12 +563,13 @@ def list_tables(schema: Optional[str] = "public") -> str:
     AND table_type = 'BASE TABLE';
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
 
-        # Fetch table names
         cursor.execute(tables_query)
         table_rows = cursor.fetchall()
         table_names = [row[0] for row in table_rows]
@@ -494,12 +577,20 @@ def list_tables(schema: Optional[str] = "public") -> str:
         logging.info(f"Found {len(table_names)} tables.")
         return json.dumps(table_names, indent=2)
 
-    except Exception as e:
-        logging.error(f"Error listing tables: {e}")
-        return json.dumps({"error": str(e)})
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"})
+    except ProgrammingError as e:
+        logging.error(f"SQL error listing tables: {e}")
+        return json.dumps({"error": f"SQL error listing tables: {e}"})
+    except DatabaseError as e:
+        logging.error(f"Database error listing tables: {e}")
+        return json.dumps({"error": f"Database error listing tables: {e}"})
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 @mcp.tool()
@@ -519,9 +610,16 @@ def ping_database() -> str:
         return json.dumps(
             {"status": "success", "message": "Database connection successful."}
         )
-    except Exception as e:
+    except OperationalError as e:
         logging.error(f"Database connection failed: {e}")
-        return json.dumps({"status": "error", "message": str(e)})
+        return json.dumps(
+            {"status": "error", "message": f"Database connection failed: {e}"}
+        )
+    except InterfaceError as e:
+        logging.error(f"Database interface error: {e}")
+        return json.dumps(
+            {"status": "error", "message": f"Database interface error: {e}"}
+        )
 
 
 @mcp.tool()
@@ -541,12 +639,13 @@ def list_database_schemas() -> str:
     ORDER BY schema_name;
     """
 
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         logging.info("Database connection established.")
         cursor = conn.cursor()
 
-        # Fetch schema names
         cursor.execute(schemas_query)
         schema_rows = cursor.fetchall()
         schema_names = [row[0] for row in schema_rows]
@@ -554,12 +653,20 @@ def list_database_schemas() -> str:
         logging.info(f"Found {len(schema_names)} schemas.")
         return json.dumps(schema_names, indent=2)
 
-    except Exception as e:
-        logging.error(f"Error listing schemas: {e}")
-        return json.dumps({"error": str(e)})
+    except OperationalError as e:
+        logging.error(f"Database connection error: {e}")
+        return json.dumps({"error": f"Database connection error: {e}"})
+    except ProgrammingError as e:
+        logging.error(f"SQL error listing schemas: {e}")
+        return json.dumps({"error": f"SQL error listing schemas: {e}"})
+    except DatabaseError as e:
+        logging.error(f"Database error listing schemas: {e}")
+        return json.dumps({"error": f"Database error listing schemas: {e}"})
     finally:
-        cursor.close()
-        conn.close()
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 if __name__ == "__main__":

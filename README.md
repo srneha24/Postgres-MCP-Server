@@ -113,44 +113,44 @@ Returns: JSON string array of schema names (system schemas like `pg_catalog` and
 
 1. Clone this repository:
 
-```bash
-git clone <repository-url>
-cd Postgres-MCP-Server
-```
+    ```bash
+    git clone <repository-url>
+    cd Postgres-MCP-Server
+    ```
 
-1. Choose your preferred installation method:
+2. Choose your preferred installation method:
 
-#### Option A: Using uv (Recommended)
+    **Option A: Using uv (Recommended)**
 
-```bash
-# Install uv if you haven't already
-pip install uv
+    ```bash
+    # Install uv if you haven't already
+    pip install uv
 
-# Create a virtual environment and install dependencies
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv sync
-```
+    # Create a virtual environment and install dependencies
+    uv venv
+    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+    uv sync
+    ```
 
-#### Option B: Using Python venv and pip
+    **Option B: Using Python venv and pip**
 
-```bash
-# Create a virtual environment
-python -m venv .venv
+    ```bash
+    # Create a virtual environment
+    python -m venv .venv
 
-# Activate the virtual environment
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+    # Activate the virtual environment
+    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
-```
+    # Install dependencies
+    pip install -r requirements.txt
+    ```
 
 ## Configuration
 
 Configure the database connection using environment variables:
 
 ```bash
-export DB_HOST=localhost        # Default: localhost
+export DB_HOST=localhost       # Default: localhost
 export DB_PORT=5432            # Default: 5432
 export DB_NAME=postgres        # Default: postgres
 export DB_USER=postgres        # Default: postgres
@@ -222,6 +222,8 @@ Add this server to your Claude Desktop configuration file:
 
 ### Using with Claude Code
 
+Open up your preferred terminal and run the following command to add the MCP to Claude Code.
+
 #### If using uv
 
 ```bash
@@ -238,6 +240,6 @@ claude mcp add postgres --transport stdio --env DB_HOST=localhost --env DB_PORT=
 
 ## Security Features
 
-- **Read-only Operations**: The server automatically blocks any queries containing INSERT, UPDATE, DELETE, CREATE, DROP, or ALTER keywords
+- **Read-only Operations**: The server automatically blocks any queries containing INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, TRUNCATE, GRANT, REVOKE, COPY, or MERGE keywords
 - **Error Handling**: Comprehensive error handling with detailed error messages
 - **Connection Management**: Proper database connection lifecycle management
