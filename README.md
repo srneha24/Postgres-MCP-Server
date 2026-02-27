@@ -118,52 +118,21 @@ Returns: JSON string array of schema names (system schemas like `pg_catalog` and
     cd Postgres-MCP-Server
     ```
 
-2. Choose your preferred installation method:
-
-    **Option A: Using uv (Recommended)**
+2. Install uv if you haven't already:
 
     ```bash
-    # Install uv if you haven't already
     pip install uv
+    ```
 
-    # Create a virtual environment and install dependencies
+3. Create a virtual environment and install dependencies
+
+    ```bash
     uv venv
     source .venv/bin/activate  # On Windows: .venv\Scripts\activate
     uv sync
     ```
 
-    **Option B: Using Python venv and pip**
-
-    ```bash
-    # Create a virtual environment
-    python -m venv .venv
-
-    # Activate the virtual environment
-    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-    # Install dependencies
-    pip install -r requirements.txt
-    ```
-
-## Configuration
-
-Configure the database connection using environment variables:
-
-```bash
-export DB_HOST=localhost       # Default: localhost
-export DB_PORT=5432            # Default: 5432
-export DB_NAME=postgres        # Default: postgres
-export DB_USER=postgres        # Default: postgres
-export DB_PASSWORD=postgres    # Default: postgres
-```
-
 ## Usage
-
-### Running Standalone
-
-```bash
-python main.py
-```
 
 ### Using with Claude Desktop
 
@@ -172,8 +141,6 @@ Add this server to your Claude Desktop configuration file:
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-#### If using uv
 
 ```json
 {
@@ -198,42 +165,43 @@ Add this server to your Claude Desktop configuration file:
 }
 ```
 
-#### If using Python directly
-
-```json
-{
-  "mcpServers": {
-    "postgres": {
-      "command": "/ABSOLUTE/PATH/TO/.venv/bin/python",
-      "args": ["/ABSOLUTE/PATH/TO/postgres-mcp-server/main.py"],
-      "env": {
-        "DB_HOST": "localhost",
-        "DB_PORT": "5432",
-        "DB_NAME": "your_database",
-        "DB_USER": "your_username",
-        "DB_PASSWORD": "your_password"
-      }
-    }
-  }
-}
-```
-
 **Note**: Replace `/ABSOLUTE/PATH/TO/postgres-mcp-server` with the actual absolute path to your installation directory. On Windows, use backslashes (e.g., `C:\\Users\\YourName\\postgres-mcp-server`) or forward slashes.
 
 ### Using with Claude Code
 
 Open up your preferred terminal and run the following command to add the MCP to Claude Code.
 
-#### If using uv
-
 ```bash
 claude mcp add postgres --transport stdio --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- uv --directory /ABSOLUTE/PATH/TO/postgres-mcp-server run main.py
 ```
 
-#### If using Python directly
+You can also add the MCP just for your current project using the following command -
 
 ```bash
-claude mcp add postgres --transport stdio --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- python /ABSOLUTE/PATH/TO/postgres-mcp-server/main.py
+claude mcp add postgres --transport stdio --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres --scope local -- uv --directory /ABSOLUTE/PATH/TO/postgres-mcp-server run main.py
+```
+
+### Using with ChatGPT Codex
+
+Open up your preferred terminal and run the following command to add the MCP to ChatGPT Codex.
+
+```bash
+codex mcp add postgres --env DB_HOST=localhost --env DB_PORT=5432 --env DB_NAME=your_database_name --env DB_USER=postgres --env DB_PASSWORD=postgres -- uv --directory /ABSOLUTE/PATH/TO/postgres-mcp-server run main.py
+```
+
+You can also add the following config directly into the `C:\Users\YourName\.codex\config.toml` file, or to your project's `YourProjectPath/.codex/config.toml` file to add the MCP only for that project.
+
+```toml
+[mcp_servers.postgres]
+command = "uv"
+args = ["--directory", "/ABSOLUTE/PATH/TO/postgres-mcp-server", "run", "main.py"]
+
+[mcp_servers.postgres.env]
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "postgres"
+DB_USER = "postgres"
+DB_PASSWORD = "postgres'
 ```
 
 **Note**: Replace `/ABSOLUTE/PATH/TO/postgres-mcp-server` with the actual absolute path to your installation directory. On Windows, use backslashes (e.g., `C:\\Users\\YourName\\postgres-mcp-server`) or forward slashes.
